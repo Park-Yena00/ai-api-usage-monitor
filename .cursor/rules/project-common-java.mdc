@@ -1,0 +1,49 @@
+---
+description: Project-wide Java security, tenancy, and shared layering (all code)
+alwaysApply: true
+---
+
+# Project Common (Java)
+
+Applies to every chat. Domain-specific rules live in `proxy-webflux.mdc` and `domain-mvc-jpa.mdc` (path-based globs).
+
+## Architecture
+
+- Service boundaries and infrastructure decisions follow `docs/architecture.md` (MSA theory background is linked from there).
+
+## Repository layout (monorepo)
+
+Canonical rules: **`docs/repository-structure.md`**.
+
+- Use a **single repo** with **`services/`** for runnable microservices (folder names = team-chosen service names, not fixed examples).
+- Put **`libs/`** only for thin shared code: **API contracts, event payloads, common utilities** — not other services’ domain/DB/repository code.
+- Keep **`docker-compose.yml` at the repo root** for local infrastructure (DB, broker, cache, etc.).
+- After real paths exist under `services/`, update **`proxy-webflux.mdc` / `domain-mvc-jpa.mdc` `globs`** if they no longer match.
+
+## Principles
+
+- SOLID, DRY, KISS, YAGNI, and OWASP-oriented practices.
+
+## Stack (summary)
+
+- Java 21, Spring Boot 3.4, Maven
+- RabbitMQ (Spring AMQP), PostgreSQL, Redis as needed
+
+## Layering (all services)
+
+1. Keep service boundaries clear by domain (Proxy, Identity, API Key, Usage, Billing, Analytics, Quota, Notification).
+2. Controllers handle transport; services handle business logic.
+3. Do not inject repositories into controllers except for clearly justified internal tooling.
+4. Use DTOs for API contracts between controller and service layers.
+5. Treat entities as persistence models, not public API response models.
+6. Prefer constructor injection over field injection.
+
+## Security and multi-tenancy
+
+1. Never commit secrets or raw API keys.
+2. Enforce tenant scope (`user` / `org` / `team`) on the server; do not trust client-supplied scope alone.
+3. Mask authorization headers and secret values in logs.
+
+## Naming
+
+- Use clear, consistent package and type names; follow the team style guide document when it exists.

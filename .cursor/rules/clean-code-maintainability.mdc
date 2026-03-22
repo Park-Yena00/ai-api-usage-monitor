@@ -1,0 +1,29 @@
+---
+description: Clean code, maintainability, and Git — complements code-quality-conventions
+alwaysApply: true
+---
+
+# Clean Code and Maintainability (Team-Wide)
+
+Summarizes clean-code practices for this project. For **AI collaboration** (scope of edits, communication, whitespace-only diffs), follow `code-quality-conventions.mdc` first. This file adds **readability and structure** without overriding those rules.
+
+## Relationship to other rules
+
+- **Refactoring**: Improve structure **within the current task or PR scope**. Do not introduce drive-by refactors or unrelated changes; that is governed by `code-quality-conventions.mdc`.
+- **Formatting**: Follow language and team style for new/edited code. Do not suggest formatting-only churn unless the user asked for it (`code-quality-conventions.mdc`).
+
+## Principles (apply when writing or reviewing code)
+
+1. **Avoid magic numbers** — Use named constants with clear meaning; centralize values that may change.
+2. **Meaningful names** — Variables, methods, and types should reflect purpose; if a name needs a comment, rename instead.
+3. **Comments** — Prefer self-explanatory code. Comment *why* or non-obvious constraints, not what the next line obviously does.
+4. **Small, single-purpose functions** — One clear responsibility; split when logic branches or mixes validation, calculation, and formatting.
+5. **DRY** — Do not duplicate logic; extract shared behavior when it is truly the same rule.
+6. **Language and team conventions** — For Java, align with project rules (e.g. `project-common-java.mdc`, `domain-mvc-jpa.mdc`, `proxy-webflux.mdc`) and the team style guide when published.
+7. **Simplify conditionals** — Extract nested or repeated condition checks into well-named methods when it improves clarity and testability.
+8. **Continuous improvement** — Leave touched code clearer than you found it **inside the same change**, without expanding scope without agreement.
+9. **Version control** — Use Git for all tracked work; commit logical units; collaborate via the team’s GitHub workflow (branches, PRs) as the team defines.
+
+## GitHub
+
+- Track work in Git; use the repository’s branching and PR process. Exact branch naming and review rules belong in team docs or `CONTRIBUTING.md` when added.

@@ -1,0 +1,25 @@
+# --- Environment (Docker Compose / local only) ---
+# 실제 값은 `.env`에만 두고 커밋하지 않는다. 키 이름만은 `.env.example`에 둔다.
+.env
+.env.*
+!.env.example
+
+# --- Build outputs ---
+target/
+build/
+out/
+*.class
+
+# --- Gradle ---
+.gradle/
+
+# --- IDE / OS ---
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/

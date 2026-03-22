@@ -1,5 +1,55 @@
-# ai-api-usage-monitor
-A proxy-based AI API usage monitoring platform that tracks real-time usage, analyzes cost, and manages quotas for both individuals and teams.
+# <Team Project> AI Usage & Billing Platform (MSA)
 
-해당 프로젝트는 2026년 1학기 팀프로젝트1 캡스톤 디자인에서 개발하는 MSA서비스입니다
-팀원 김민진 박예나 조민선
+프록시 서버 기반으로 OpenAI / Gemini / Claude 등 AI Provider의 **실시간 사용량과 비용**을 수집·분석하고, **개인/팀/조직 단위 Quota 및 정산**을 돕는 MSA 플랫폼입니다.
+
+## 목표(Goals)
+- 조직 내 AI API 사용량을 투명하게 관리
+- 팀별 AI 비용 자동 정산
+- 개인 사용자의 AI 비용/사용 패턴 별도 추적 및 분석
+- 사용량 폭증을 사전에 감지
+- 사용자/팀/조직별 비용 책임을 명확히 분리
+
+## 핵심 기능(요약)
+- **Proxy 기반 사용량 수집**: 사용자는 Provider를 직접 호출하지 않고 플랫폼 프록시로 호출
+- **비용 계산 및 정산**: 사용량(토큰/estimated cost)을 기반으로 개인/팀/조직 비용 집계
+- **대시보드**: 개인/조직·팀별 사용량 및 비용 확인
+- **Quota / Budget 제한(선택)**: soft limit(경고) / hard block(차단) 정책
+- **알림(선택)**: Slack/Email 등으로 임계치 도달 알림
+
+## 아키텍처(High-Level)
+- 외부 요청 진입: `API Gateway`
+- 핵심 도메인: `Proxy Service`(AI 호출 중계 + usage 기록)
+- 비동기 처리: `RabbitMQ` 이벤트 기반 연계(usage-recorded 등)
+- 도메인 서비스 분리:
+  - `Identity & Organization Service`(개인/조직/팀/RBAC)
+  - `API Key Service`(공급사 키 암호화 저장/조회)
+  - `Usage Tracking Service`(usage 저장)
+  - `Billing Service`(비용 계산/정산 기록 저장)
+  - `Analytics & Reporting Service`(대시보드 집계/리포트, 선택)
+  - `Quota Service`(정책/제한 기준)
+  - `Notification Service`(알림 발송, 선택)
+
+## 기술 스택(결정)
+- **백엔드(Proxy 등)**: **Spring Boot + Spring WebFlux** — 비동기 I/O·스트리밍·Provider 중계에 사용. **FastAPI(Python)는 사용하지 않습니다.**
+- **메시지 브로커**: **RabbitMQ** — `usage-recorded` 등 이벤트 발행·구독(Spring AMQP).
+- **기타 서비스**: 동일 Spring 생태계에서 Spring MVC + JPA 등으로 구현 가능(팀 합의).
+- 상세: `docs/architecture.md` §2.1, §6.2
+
+## 로컬 개발 관련(중요)
+- **Kubernetes는 사용하지 않음**: 배포하지 않는 캡스톤 환경을 전제로 합니다.
+- **의존성(DB·큐·캐시)**: **Docker Compose**로 실행합니다. 예: `PostgreSQL`, `RabbitMQ`, `Redis`.
+- **Proxy Service(WebFlux)**: **로컬 JVM**에서 실행하는 것을 기본으로 합니다. 브라우저·클라이언트는 `localhost`의 Proxy 포트로 연결합니다.
+- 그 외 마이크로서비스도 **로컬 실행**을 기본으로 하며, 필요 시 통합 테스트용으로 Compose에 포함할 수 있습니다.
+
+## 문서
+- 아키텍처 문서: `docs/architecture.md`
+- 저장소·디렉터리 구조(모노레포): `docs/repository-structure.md`
+- MSA 이론 배경: `docs/msa-architecture-theory.md`
+- 코드 컨벤션(네이밍·스타일): `docs/code-conventions.md`
+- 브랜치·Git Flow·보호 규칙: `docs/branch-conventions.md`
+- 커밋 메시지 규칙: `docs/commit-conventions.md`
+
+## 팀 정보
+- 팀원: 김민진, 박예나, 조민선
+
+해당 프로젝트는 2026년 1학기 팀프로젝트1 캡스톤 디자인에서 개발하는 MSA 기반 서비스입니다.

@@ -1,0 +1,45 @@
+---
+description: Domain services — Spring MVC, JPA, transactions, repositories
+globs: "services/**/*.java"
+alwaysApply: false
+---
+
+# Domain Services (MVC + JPA)
+
+Applies under `services/` (adjust `globs` in this file if domain module paths change).
+
+## Persistence and repositories
+
+1. Repository types should generally be interfaces extending `JpaRepository`.
+2. Choose query style by case: derived query, JPQL, QueryDSL, or native query when justified.
+3. Use `@EntityGraph`, fetch join, or projections selectively to prevent N+1.
+4. Use `@Transactional` for multi-step writes and required consistency boundaries.
+
+## Entities
+
+1. Annotate with `@Entity`; add explicit table/column mapping when it improves clarity.
+2. Do not require Lombok `@Data` on entities by default.
+3. Prefer `@Getter` and controlled mutators to avoid unsafe `equals` / `toString` / lazy side effects.
+4. Default relationships to `FetchType.LAZY` unless eager loading is explicitly required.
+5. Add bean validation annotations where inputs are validated at boundaries.
+
+## Services and controllers
+
+1. Use `@Service` for service implementations.
+2. Service interfaces are optional; use them when multiple implementations, contracts, or tests benefit.
+3. Prefer repository lookups with `orElseThrow` for not-found paths.
+4. Use `@RestController` and class-level `@RequestMapping` for HTTP APIs.
+5. Keep REST paths resource-oriented (`/users/{id}`); avoid verb-based paths.
+6. For synchronous MVC endpoints, `ResponseEntity<ApiResponse<T>>` is recommended where the team standard applies.
+
+## Exception handling
+
+1. Use a global exception handler (`@RestControllerAdvice`) as the default.
+2. Avoid wrapping every controller method in broad `try-catch`; catch only when local recovery is needed.
+3. Return consistent error payloads for non-streaming APIs.
+
+## DTOs
+
+1. Prefer immutable DTOs (`record` or immutable classes).
+2. Validate inbound DTOs at API boundaries (`@Valid`, Jakarta validation).
+3. Keep DTOs decoupled from entity internals.

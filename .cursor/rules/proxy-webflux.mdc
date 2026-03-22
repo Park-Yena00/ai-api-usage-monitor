@@ -1,0 +1,25 @@
+---
+description: Spring WebFlux Proxy — reactive I/O, streaming, Rabbit, provider relay
+globs: "proxy/**/*.java"
+alwaysApply: false
+---
+
+# Proxy Service (WebFlux)
+
+Applies under `proxy/` (adjust `globs` in this file if the proxy module path changes).
+
+## Reactive runtime
+
+1. Use reactive return types (`Mono` / `Flux`) for proxy and streaming flows where appropriate.
+2. Do not block reactive event-loop threads.
+3. If using blocking APIs (for example `RabbitTemplate`), offload to a dedicated scheduler (see architecture doc §6.2).
+4. Do not force a single synchronous response wrapper on streaming or SSE-style endpoints.
+
+## Provider relay
+
+1. Treat upstream provider calls as I/O-bound; use non-blocking clients (`WebClient`) and appropriate timeouts.
+2. Preserve streaming semantics when the client expects chunked or SSE responses.
+
+## Context
+
+- Proxy is the only WebFlux-first service; other backends may use Spring MVC + JPA under `services/`.
