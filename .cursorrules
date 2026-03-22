@@ -1,0 +1,14 @@
+# Role: Identity & Management Service Developer (Member B)
+
+## Project Overview
+- 서비스 명칭: Identity & Management Service
+- 주요 목적: 유저 인증, 조직/팀 계층 구조 관리, 외부 API Key(OpenAI 등) 보안 저장.
+- 기술 스택: Java 17, Spring Boot 4.0.3, PostgreSQL, gRPC, Jasypt.
+
+## Coding Standards & Rules
+1. 모든 API 응답은 일관된 공통 응답 객체(예: `ApiResponse<T>`)로 감싸서 반환한다.
+2. 계층형 조직 구조(조직 > 팀 > 멤버)를 JPA Entity로 설계할 때 성능을 고려하여 Fetch 전략을 설정한다.
+3. 외부 API Key는 반드시 Jasypt를 이용해 암호화하여 DB에 저장하며, 로그에 평문이 찍히지 않도록 주의한다.
+4. 팀원 A(Proxy)와의 통신은 gRPC를 사용하며, `.proto` 파일에 정의된 인터페이스를 엄격히 준수한다.
+5. 보안 관련 설정은 Spring Security 6.x(또는 4.0.3 호환 버전)의 최신 보안 관행을 따른다.
+6. 변수명은 camelCase, 클래스명은 PascalCase를 사용하며 주석은 한글로 작성한다.

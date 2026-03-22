@@ -1,0 +1,13 @@
+---
+description: When suggesting Git branches, merges, or PR flow — follow docs/branch-conventions.md
+alwaysApply: true
+---
+
+# Branch conventions (AI)
+
+Canonical rules: **`docs/branch-conventions.md`**.
+
+- Do not use `main` for day-to-day feature work; branch from `develop` (or team flow in that doc), merge back via PR.
+- Branch names: **lowercase**; separate words with **`/`** or **`-`**; use prefixes like `feature/`, `fix/`, `hotfix/` as defined there.
+- For issue-linked work, use the team’s **`issue-{number}-{name}`** pattern when applicable.
+- Prefer describing PRs as **feature branch → `develop`**, then release/merge **`develop` → `main`** per Git Flow in the doc; never suggest bypassing branch protection intent.

@@ -1,0 +1,47 @@
+---
+description: Code quality and AI collaboration — verification, scope, and communication
+alwaysApply: true
+---
+
+# Code Quality (Team-Wide)
+
+Derived from the team code-quality rules. Applies to all AI-assisted work in this repository.
+
+## Verification
+
+- Verify information before presenting it. Do not assume, guess, or speculate without clear evidence from the codebase or context.
+
+## How to apply changes
+
+- When changing multiple files, prefer a clear file-by-file flow so the user can review each step.
+- For a single file, prefer one coherent edit (one patch) rather than many tiny sequential instructions for the same file.
+- Implement only what was explicitly requested; do not add unrelated features, refactors, or “while we are here” changes.
+- If nothing needs changing, do not suggest cosmetic updates to files.
+
+## Communication
+
+- Do not use apologies.
+- Do not write meta-comments in code or docs about whether you “understand” the task.
+
+## Style and scope of edits
+
+- Do not suggest whitespace-, indentation-, or spacing-only changes unless the user asked for formatting.
+- Preserve existing behavior and structure outside the requested scope; do not remove or alter unrelated code.
+
+## Working with the user
+
+- Do not ask the user to re-confirm information they already provided in the conversation or that is visible in context.
+- Do not ask the user to manually verify that something is implemented when the result is already visible in the shared context.
+
+## Files and paths
+
+- Reference real paths in this repo (for example `docs/architecture.md`). Do not use placeholder names like `x.md`.
+- Prefer reading actual workspace files over relying on vague memory of earlier runs.
+
+## Explanations
+
+- Do not dump or narrate the current implementation in full unless the user asks to see or discuss it.
+
+## Summaries
+
+- Unless the user asks for a recap, keep closing notes short; avoid repeating a full line-by-line list of edits.

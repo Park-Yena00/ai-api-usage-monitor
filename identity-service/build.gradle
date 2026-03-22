@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.3'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'com.google.protobuf' version '0.9.4'
+}
+
+group = 'com.eevee'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Jasypt (Spring Boot 4 호환)
+    implementation 'com.github.ulisesbocchio:jasypt-spring-boot-starter:4.0.4'
+
+    // gRPC (Spring Boot 4 공식 Spring gRPC 서버 스타터 - 서버만 사용)
+    implementation 'org.springframework.grpc:spring-grpc-server-spring-boot-starter:1.0.0'
+
+    // gRPC 버전은 BOM으로 통일
+    implementation platform('io.grpc:grpc-bom:1.79.0')
+    implementation 'io.grpc:grpc-protobuf'
+    implementation 'io.grpc:grpc-stub'
+    runtimeOnly 'io.grpc:grpc-netty-shaded'
+
+    // gRPC generated 코드에서 annotation 필요할 때 사용
+    compileOnly 'jakarta.annotation:jakarta.annotation-api:3.0.0'
+
+    runtimeOnly 'org.postgresql:postgresql'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:4.34.0"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.79.0"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

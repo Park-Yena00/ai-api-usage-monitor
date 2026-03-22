@@ -1,0 +1,17 @@
+---
+description: Pointer to team code conventions (naming, style) — short reminders for AI
+alwaysApply: true
+---
+
+# Code Conventions (Pointer)
+
+Full rules: **`docs/code-conventions.md`** is the source of truth.
+
+## Quick reminders (Java / DB / style)
+
+- Variables and methods: **lowerCamelCase**; types: **UpperCamelCase**; packages: **lowercase segments only**, e.g. `com.example.userservice`.
+- `boolean` fields: **lowerCamelCase**, e.g. `isHuman` (use `is` when it aids readability).
+- Constants: **UPPER_SNAKE_CASE** is the naming convention; implementation shape (e.g. `static final` vs other) is not mandated here.
+- Database tables/columns: **snake_case**, lowercase.
+- Indent with **4 spaces**; do not use tab characters for indentation.
+- Comments explain **intent and non-obvious constraints**, not syntax lessons.

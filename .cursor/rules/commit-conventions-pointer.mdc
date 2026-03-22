@@ -1,0 +1,14 @@
+---
+description: When writing or rewriting commit messages — follow docs/commit-conventions.md
+alwaysApply: true
+---
+
+# Commit message conventions (AI)
+
+Canonical rules: **`docs/commit-conventions.md`**.
+
+- Prefer **one logical change per commit**; split unrelated edits into separate commits when practical.
+- Structure: **Title** (Type + Subject), optional **Body**, optional **Footer**; **blank line** between sections.
+- **Type** first letter **capitalized** in English: `Feat`, `Fix`, `Docs`, `Style`, `Refactor`, `Test`, `Chore` — followed by **`:`** and a short **Subject** (about ≤50 chars; no trailing period on the subject line per team doc).
+- Body: ~72 chars per line; focus on **what/why**, not trivial how.
+- Footer (if needed): `Fixes` / `Resolves` / `Ref` / `Related to` with `#issue` numbers as in the doc.
