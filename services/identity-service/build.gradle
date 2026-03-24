@@ -14,6 +14,11 @@ java {
     }
 }
 
+// Docker / CI에서 복사 경로를 고정하기 위한 실행 가능 JAR 파일명
+tasks.named('bootJar') {
+    archiveFileName = 'app.jar'
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -27,6 +32,7 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
 
     // Jasypt (Spring Boot 4 호환)
@@ -34,6 +40,7 @@ dependencies {
 
     // gRPC (Spring Boot 4 공식 Spring gRPC 서버 스타터 - 서버만 사용)
     implementation 'org.springframework.grpc:spring-grpc-server-spring-boot-starter:1.0.0'
+
 
     // gRPC 버전은 BOM으로 통일
     implementation platform('io.grpc:grpc-bom:1.79.0')
