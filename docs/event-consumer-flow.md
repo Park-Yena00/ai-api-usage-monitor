@@ -51,6 +51,8 @@ flowchart LR
 
 각 서비스는 **멱등 처리**(예: `eventId` 기준)로 중복 전달을 안전하게 처리한다.
 
+**발행·바인딩(본 저장소와 정합):** Topic Exchange 이름 **`usage.events`**, 라우팅 키 **`usage.recorded`** (`proxy-service`의 `proxy.rabbit.*`와 동일). `usage-service`는 큐 **`usage-service.queue`** 를 선언하고 위 Exchange에 해당 키로 바인딩한다(`services/usage-service`).
+
 ---
 
 ## 2. 시퀀스: 발행 1회 → 소비자 N (병렬)
@@ -122,7 +124,7 @@ flowchart LR
 
 ## 5. 대시보드·월별 비용 조회 (이벤트 외)
 
-화면에서 **기간별 합계·차트**를 볼 때는 보통 **HTTP GET**으로 `analytics-service` 또는 `usage-service`·`billing-service`의 **조회 API**를 호출한다. 이 경로는 [`docs/sequence-diagrams.md`](sequence-diagrams.md) §3과 같다.
+화면에서 **기간별 합계·차트**를 볼 때는 보통 **HTTP GET**으로 `analytics-service` 또는 `usage-service`·`billing-service`의 **조회 API**를 호출한다. 이 경로는 [`docs/sequence-diagrams.md`](sequence-diagrams.md) §3과 같다. **usage-service와 analytics-service의 역할·REST vs 이벤트 선택**은 [`docs/usage-analytics-relationship.md`](usage-analytics-relationship.md)를 참고한다.
 
 ---
 

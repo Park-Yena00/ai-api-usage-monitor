@@ -1,5 +1,10 @@
 # Local infrastructure for the monorepo (see docs/architecture.md §10).
 # Copy `.env.example` to `.env` and set secrets locally; do not commit `.env`.
+#
+# 앱 이미지 빌드 전 각 서비스에서 ./gradlew bootJar 로 app.jar 생성:
+#   services/proxy-service, services/api-gateway-service
+#
+# identity-service, usage-service 는 호스트에서 실행(IDE / ./gradlew bootRun). Compose 에는 포함하지 않는다.
 
 services:
   postgres:
@@ -26,6 +31,33 @@ services:
     image: redis:7-alpine
     ports:
       - "${REDIS_PORT:-6379}:6379"
+
+  proxy-service:
+    build:
+      context: ./services/proxy-service
+    depends_on:
+      - rabbitmq
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      PROXY_OPENAI_TEST_API_KEY: ${PROXY_OPENAI_TEST_API_KEY:-}
+      PROXY_GATEWAY_SHARED_SECRET: ${PROXY_GATEWAY_SHARED_SECRET:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${PROXY_SERVICE_PORT:-8081}:8081"
+
+  api-gateway-service:
+    build:
+      context: ./services/api-gateway-service
+    depends_on:
+      - proxy-service
+    environment:
+      GATEWAY_PROXY_URI: http://proxy-service:8081
+      PROXY_GATEWAY_SHARED_SECRET: ${PROXY_GATEWAY_SHARED_SECRET:-}
+      GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-}
+      GATEWAY_DEV_MODE: ${GATEWAY_DEV_MODE:-true}
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
 
 volumes:
   postgres_data:

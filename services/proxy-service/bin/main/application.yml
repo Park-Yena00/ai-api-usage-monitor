@@ -1,6 +1,9 @@
+server:
+  port: 8081
+
 spring:
   application:
-    name: proxy-gateway-service
+    name: proxy-service
   rabbitmq:
     host: localhost
     port: 5672
@@ -21,7 +24,6 @@ proxy:
       base-url: https://api.anthropic.com
     google:
       base-url: https://generativelanguage.googleapis.com
-  # Dev/test: provider key from env only (never commit). Key Service ?∞Îèô ??mock-key ?úÍ±∞.
   key-service:
     base-url: http://localhost:8090
     internal-token: ""
@@ -30,5 +32,7 @@ proxy:
   rabbit:
     usage-exchange: usage.events
     usage-routing-key: usage.recorded
-  security:
-    local-dev-headers: true
+  gateway:
+    # When true, require header X-Gateway-Auth (see docs/contracts/gateway-proxy.md). Same value as Gateway service.
+    require-auth: false
+    shared-secret: ${PROXY_GATEWAY_SHARED_SECRET:}

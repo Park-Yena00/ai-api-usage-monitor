@@ -7,6 +7,11 @@ plugins {
 group = 'com.eevee'
 version = '0.0.1-SNAPSHOT'
 
+// Docker / CI에서 복사 경로를 고정하기 위한 실행 가능 JAR 파일명
+tasks.named('bootJar') {
+    archiveFileName = 'app.jar'
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
