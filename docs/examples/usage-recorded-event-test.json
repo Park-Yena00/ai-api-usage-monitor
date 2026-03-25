@@ -1,0 +1,18 @@
+{
+  "eventId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "occurredAt": "2026-03-22T10:00:00Z",
+  "correlationId": "TEST-manual-pipeline",
+  "userId": "test-user-synthetic",
+  "provider": "GOOGLE",
+  "model": "gemini-test",
+  "tokenUsage": {
+    "model": "gemini-test",
+    "promptTokens": 10,
+    "completionTokens": 20,
+    "totalTokens": 30
+  },
+  "estimatedCost": 0,
+  "requestPath": "/proxy/google/v1beta/models/test:generateContent",
+  "upstreamHost": "generativelanguage.googleapis.com",
+  "streaming": false
+}
