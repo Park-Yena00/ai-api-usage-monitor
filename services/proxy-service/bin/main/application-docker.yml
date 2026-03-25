@@ -1,0 +1,13 @@
+# Docker Compose 등 컨테이너 환경용 (spring.profiles.active=docker)
+# 로컬 IDE / ./gradlew bootRun 은 application.yml(localhost)만 사용한다.
+
+spring:
+  rabbitmq:
+    # Compose 기본값 rabbitmq; 필요 시 SPRING_RABBITMQ_HOST 로 덮어쓴다.
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+
+proxy:
+  key-service:
+    # identity-service 는 호스트에서 실행 — 컨테이너 proxy 가 호스트로 접근 (Docker Desktop / Linux host-gateway)
+    # 기본은 Spring 기본 포트 8080. application.yml 의 localhost:8090 과 맞추려면 PROXY_KEY_SERVICE_BASE_URL=http://host.docker.internal:8090
+    base-url: ${PROXY_KEY_SERVICE_BASE_URL:http://host.docker.internal:8080}
