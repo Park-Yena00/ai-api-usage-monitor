@@ -57,6 +57,8 @@ public class ProxyProperties {
         private String baseUrl = "http://localhost:8090";
         private String internalToken = "";
         private String mockKey = "";
+        private String mockKeyOpenai = "";
+        private String mockKeyGoogle = "";
         private String cacheTtl = "PT5M";
 
         public String getBaseUrl() {
@@ -81,6 +83,22 @@ public class ProxyProperties {
 
         public void setMockKey(String mockKey) {
             this.mockKey = mockKey;
+        }
+
+        public String getMockKeyOpenai() {
+            return mockKeyOpenai;
+        }
+
+        public void setMockKeyOpenai(String mockKeyOpenai) {
+            this.mockKeyOpenai = mockKeyOpenai;
+        }
+
+        public String getMockKeyGoogle() {
+            return mockKeyGoogle;
+        }
+
+        public void setMockKeyGoogle(String mockKeyGoogle) {
+            this.mockKeyGoogle = mockKeyGoogle;
         }
 
         public String getCacheTtl() {

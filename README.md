@@ -37,7 +37,7 @@
 
 ## 로컬 개발 관련(중요)
 - **Kubernetes는 사용하지 않음**: 배포하지 않는 캡스톤 환경을 전제로 합니다.
-- **실행 순서·OpenAI 키·로그/Rabbit/DB로 사용량 파이프라인 검증**은 **[`docs/local-run-and-usage-verification.md`](docs/local-run-and-usage-verification.md)** 를 본다.
+- **실행 순서·(Google / OpenAI) 키·경로·로그/Rabbit/DB로 사용량 파이프라인 검증**은 **[`docs/local-run-and-usage-verification.md`](docs/local-run-and-usage-verification.md)** 를 본다.
 - **의존성(DB·큐·캐시)**: **Docker Compose**로 실행합니다. 예: `PostgreSQL`, `RabbitMQ`, `Redis`.
 - **API Gateway + Proxy**: `docker-compose.yml`에서 **컨테이너로 함께 기동**할 수 있습니다(호스트 포트 기본 `8080` / `8081`). 계약·경로는 `docs/contracts/gateway-proxy.md`를 참고합니다.
 - **identity-service** 등 그 외 앱도 **로컬 JVM** 실행을 기본으로 하며, 필요 시 Compose에 추가할 수 있습니다.

@@ -4,7 +4,6 @@ import com.eevee.proxyservice.config.ProxyProperties;
 import com.eevee.usage.events.AiProvider;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -50,7 +49,7 @@ public class ApiKeyClient {
         String segment = cacheKey.substring(idx + 1);
         AiProvider provider = AiProvider.fromPathSegment(segment);
 
-        String mock = proxyProperties.getKeyService().getMockKey();
+        String mock = resolveMockKey(provider);
         if (mock != null && !mock.isBlank()) {
             return mock;
         }
@@ -77,6 +76,23 @@ public class ApiKeyClient {
         } catch (WebClientResponseException e) {
             throw new IllegalStateException("key service error: " + e.getStatusCode(), e);
         }
+    }
+
+    /**
+     * Uses provider-specific mock keys when set; otherwise falls back to legacy {@code mock-key}.
+     */
+    private String resolveMockKey(AiProvider provider) {
+        ProxyProperties.KeyService ks = proxyProperties.getKeyService();
+        String specific = switch (provider) {
+            case OPENAI -> ks.getMockKeyOpenai();
+            case GOOGLE -> ks.getMockKeyGoogle();
+            case ANTHROPIC -> null;
+        };
+        if (specific != null && !specific.isBlank()) {
+            return specific;
+        }
+        String legacy = ks.getMockKey();
+        return (legacy != null && !legacy.isBlank()) ? legacy : null;
     }
 
     private record KeyResponse(String plainKey) {

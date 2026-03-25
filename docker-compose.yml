@@ -40,6 +40,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       PROXY_OPENAI_TEST_API_KEY: ${PROXY_OPENAI_TEST_API_KEY:-}
+      PROXY_GOOGLE_TEST_API_KEY: ${PROXY_GOOGLE_TEST_API_KEY:-}
+      PROXY_MOCK_KEY_FALLBACK: ${PROXY_MOCK_KEY_FALLBACK:-}
       PROXY_GATEWAY_SHARED_SECRET: ${PROXY_GATEWAY_SHARED_SECRET:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
