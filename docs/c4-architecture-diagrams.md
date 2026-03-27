@@ -1,161 +1,136 @@
 # AI Usage & Billing Platform - C4 Architecture Diagrams (Code As-Is)
 
-이 문서는 설계 문서의 목표 구조가 아니라, 현재 저장소에 존재하는 코드만 기준으로
-시스템 아키텍처를 C4 모델(C1 → C2 → C3 → C4)로 표현한다.
+이 문서는 목표 설계가 아니라, 현재 저장소에 존재하는 구현 코드 기준으로
+시스템 아키텍처를 C4 모델(C1 → C4)로 정리한다.
 
-분석 대상(코드 기준):
+분석 대상:
 - `services/api-gateway-service`
 - `services/proxy-service`
 - `services/identity-service`
 - `services/usage-service`
-- `docker-compose.yml`
+- `libs/usage-events`
+- 서비스별 `application.yml`/`application.properties`
 
 ## C1 - System Context
 
 ```mermaid
 flowchart TB
-    %% C1 의도를 유지하면서 겹침을 줄이기 위해 수동 배치
-    title["C1: AI Usage & Analytics Platform - System Context (As-Is)"]
+    client["Developer / Client App"]
 
-    dev["Developer/User<br/>플랫폼 API 호출 사용자"]
+    subgraph platform["AI Usage Platform (As-Is)"]
+      gateway["API Gateway Service"]
+      proxy["Proxy Service"]
+      identity["Identity Service"]
+      usage["Usage Service"]
+    end
 
-    openai["OpenAI API<br/>LLM Provider"]
-    anthropic["Anthropic API<br/>LLM Provider"]
-    google["Google Gemini API<br/>LLM Provider"]
-    keyService["API Key Service<br/>Proxy 키 조회 대상"]
+    openai["OpenAI API"]
+    anthropic["Anthropic API"]
+    google["Google Gemini API"]
+    keysvc["API Key Service"]
+    rabbit["RabbitMQ"]
+    appDb["PostgreSQL (app)"]
+    usageDb["PostgreSQL (usage_db)"]
 
-    platform["Platform (As-Is)<br/>Gateway + Proxy + Identity + Usage"]
+    client -->|Auth API| identity
+    client -->|/api/v1/ai/**| gateway
+    gateway -->|rewrite to /proxy/**| proxy
 
-    dev -->|인증/프록시 API 호출<br/>HTTPS| platform
-    platform -->|AI 요청 중계<br/>HTTPS| openai
-    platform -->|AI 요청 중계<br/>HTTPS| anthropic
-    platform -->|AI 요청 중계<br/>HTTPS| google
-    platform -->|Provider API Key 조회<br/>HTTP/internal| keyService
+    proxy -->|LLM request relay| openai
+    proxy -->|LLM request relay| anthropic
+    proxy -->|LLM request relay| google
+    proxy -->|provider key lookup| keysvc
+    proxy -->|publish usage.recorded| rabbit
 
-    %% 외부 시스템을 상단열로 정렬하고 Platform을 하단 중앙으로 유도
-    openai --- anthropic
-    anthropic --- google
-    google --- keyService
+    usage -->|consume usage.recorded| rabbit
+    identity -->|JPA| appDb
+    usage -->|JPA| usageDb
 ```
 
 ## C2 - Container Diagram
 
 ```mermaid
 C4Container
-title C2: Containers (Code As-Is Only)
+title C2: Containers (Current Implementation)
 
-Person(devUser, "Developer/User", "플랫폼 API 호출 사용자")
+Person(client, "Developer/User", "Auth and AI API consumer")
 
-System_Boundary(platform, "AI Usage & Billing Platform") {
-    Container(gateway, "API Gateway Service", "Spring Cloud Gateway (WebFlux)", "JWT 검증, /api/v1/ai -> /proxy 라우팅")
-    Container(proxy, "Proxy Service", "Spring Boot WebFlux", "Provider 중계, 사용량 추출, usage 이벤트 발행")
-    Container(identity, "Identity Service", "Spring Boot + JPA", "회원가입/Auth API, 사용자 데이터 관리")
-    Container(usage, "Usage Tracking Service", "Spring MVC + JPA", "usage 이벤트 소비 및 usage 로그 저장")
+System_Boundary(platform, "AI Usage Platform") {
+    Container(gateway, "API Gateway Service", "Spring Cloud Gateway (WebFlux)", "JWT security and route rewrite /api/v1/ai/** -> /proxy/**")
+    Container(proxy, "Proxy Service", "Spring Boot WebFlux", "Provider relay, usage parsing, usage event publishing")
+    Container(identity, "Identity Service", "Spring Boot + Spring Security + JPA", "Signup/Login, JWT issuance, user persistence")
+    Container(usage, "Usage Service", "Spring Boot + RabbitMQ + JPA", "Consume usage events, idempotent persistence")
 
-    ContainerDb(identityDb, "PostgreSQL (app)", "RDB", "Identity/Org 데이터")
-    ContainerDb(usageDb, "PostgreSQL (usage_db)", "RDB", "Usage 로그 데이터")
-    ContainerQueue(rabbit, "RabbitMQ", "Message Broker", "usage-recorded 등 이벤트")
+    ContainerQueue(rabbit, "RabbitMQ", "AMQP", "usage.events / usage.recorded")
+    ContainerDb(appDb, "PostgreSQL (app)", "RDB", "Identity domain data")
+    ContainerDb(usageDb, "PostgreSQL (usage_db)", "RDB", "Usage logs")
 }
 
-System_Ext(openai, "OpenAI API", "LLM Provider")
-System_Ext(anthropic, "Anthropic API", "LLM Provider")
-System_Ext(google, "Google Gemini API", "LLM Provider")
-System_Ext(keySvc, "API Key Service (External/Internal)", "Proxy key lookup target")
+System_Ext(openai, "OpenAI API", "LLM provider")
+System_Ext(anthropic, "Anthropic API", "LLM provider")
+System_Ext(google, "Google Gemini API", "LLM provider")
+System_Ext(keysvc, "API Key Service", "provider key source")
 
-Rel(devUser, gateway, "AI 프록시 API 호출", "HTTPS")
-Rel(devUser, identity, "회원가입 호출", "HTTPS")
-Rel(gateway, proxy, "프록시 라우팅 + 신뢰 헤더 전달", "HTTP")
-Rel(proxy, keySvc, "사용자별 Provider API Key 조회", "HTTP/internal")
-Rel(proxy, openai, "Provider 호출", "HTTPS")
-Rel(proxy, anthropic, "Provider 호출", "HTTPS")
-Rel(proxy, google, "Provider 호출", "HTTPS")
-Rel(proxy, rabbit, "usage-recorded 발행", "AMQP")
+Rel(client, identity, "POST /api/auth/signup, /login", "HTTPS")
+Rel(client, gateway, "AI request", "HTTPS")
+Rel(gateway, proxy, "forward with trusted headers", "HTTP")
 
-Rel(usage, rabbit, "usage-recorded 소비", "AMQP")
-Rel(usage, usageDb, "usage 로그 저장", "JPA")
-Rel(identity, identityDb, "사용자/조직/팀 저장", "JPA")
+Rel(proxy, keysvc, "resolve provider API key", "HTTP")
+Rel(proxy, openai, "relay", "HTTPS")
+Rel(proxy, anthropic, "relay", "HTTPS")
+Rel(proxy, google, "relay", "HTTPS")
+Rel(proxy, rabbit, "publish usage.recorded", "AMQP")
+
+Rel(usage, rabbit, "consume usage.recorded", "AMQP")
+Rel(identity, appDb, "read/write user data", "JPA")
+Rel(usage, usageDb, "read/write usage logs", "JPA")
 ```
 
-## C3 - Component Diagram (Proxy Service)
+## C3 - Component Diagram (Cross-Service Runtime Flow)
 
 ```mermaid
-C4Component
-title C3: Proxy Service Components
+flowchart LR
+  subgraph GW["API Gateway Service"]
+    gwSec["SecurityConfiguration / JwtDecoderConfiguration"]
+    gwFilter["ProxyTrustHeadersGatewayFilter"]
+    gwRoute["Gateway Route (application.yml)"]
+    gwSec --> gwFilter --> gwRoute
+  end
 
-Container_Boundary(proxyBoundary, "Proxy Service (Spring WebFlux)") {
-    Component(proxyController, "ProxyController", "WebFlux Controller", "/proxy/{provider}/** 엔드포인트")
-    Component(authFilter, "GatewayAuthWebFilter", "WebFilter", "X-Gateway-Auth 검증")
-    Component(userContextResolver, "UserContextResolver", "Security Component", "X-User-Id/X-Org-Id/X-Team-Id 해석")
-    Component(relayService, "ProxyRelayService", "Service", "요청/응답 중계, usage 파싱")
-    Component(providerRegistry, "ProviderRegistry", "Registry", "ProviderHandler 라우팅")
-    Component(providerHandler, "ProviderHandler (OpenAI/Google/Anthropic)", "Adapter", "Provider별 URL/인증/usage 파싱")
-    Component(apiKeyClient, "ApiKeyClient", "Service", "API Key Service 조회 + Caffeine 캐시")
-    Component(eventPublisher, "UsageEventPublisher", "Messaging", "RabbitMQ usage 이벤트 발행")
-}
+  subgraph PX["Proxy Service"]
+    pxCtl["ProxyController (/proxy/**)"]
+    pxRelay["ProxyRelayService"]
+    pxReg["ProviderRegistry + ProviderHandler*"]
+    pxKey["ApiKeyClient"]
+    pxCtx["UserContextResolver"]
+    pxPub["UsageEventPublisher"]
+    pxCtl --> pxRelay
+    pxRelay --> pxReg
+    pxRelay --> pxKey
+    pxRelay --> pxCtx
+    pxRelay --> pxPub
+  end
 
-Container_Ext(gateway, "API Gateway Service", "Spring Cloud Gateway")
-Container_Ext(keySvc, "API Key Service", "Internal API")
-Container_Ext(providerApis, "AI Providers", "OpenAI/Gemini/Anthropic")
-Container_Ext(rabbit, "RabbitMQ", "Message Broker")
+  subgraph US["Usage Service"]
+    usListener["UsageRecordedEventListener (@RabbitListener)"]
+    usSvc["UsageRecordedService"]
+    usRepo["UsageRecordedLogRepository"]
+    usEntity["UsageRecordedLogEntity"]
+    usListener --> usSvc --> usRepo --> usEntity
+  end
 
-Rel(gateway, authFilter, "신뢰 헤더 포함 요청 전달", "HTTP")
-Rel(authFilter, proxyController, "검증 통과 시 요청 전달", "WebFlux chain")
-Rel(proxyController, relayService, "relay()", "Reactive call")
-Rel(relayService, userContextResolver, "사용자 컨텍스트 해석", "Internal call")
-Rel(relayService, apiKeyClient, "Provider 키 조회", "Reactive call")
-Rel(relayService, providerRegistry, "Provider handler 조회", "Internal call")
-Rel(providerRegistry, providerHandler, "provider별 구현 선택", "Internal call")
-Rel(relayService, providerHandler, "업스트림 URL/usage 파싱", "Internal call")
-Rel(relayService, providerApis, "요청 중계", "HTTPS (WebClient)")
-Rel(relayService, eventPublisher, "UsageRecordedEvent 생성/발행", "Reactive call")
-Rel(eventPublisher, rabbit, "usage.recorded 발행", "AMQP")
-Rel(apiKeyClient, keySvc, "internal/api-keys/{provider}", "HTTP")
-```
+  subgraph ID["Identity Service"]
+    idCtl["AuthController"]
+    idSvc["UserService"]
+    idRepo["UserRepository / RoleRepository"]
+    idJwt["JwtTokenProvider + JwtAuthenticationFilter"]
+    idCtl --> idSvc --> idRepo
+    idSvc --> idJwt
+  end
 
-## C3 - Component Diagram (Usage Service)
-
-```mermaid
-C4Component
-title C3: Usage Service Components (As-Is)
-
-Container_Boundary(usageBoundary, "Usage Service (Spring MVC + JPA)") {
-    Component(eventListener, "UsageRecordedEventListener", "@RabbitListener", "usage.rabbit.queue 메시지 소비")
-    Component(recordedService, "UsageRecordedService", "Application Service", "중복 eventId 검사 + 엔티티 매핑")
-    Component(recordedRepo, "UsageRecordedLogRepository", "Spring Data JPA", "UsageRecordedLogEntity 저장/조회")
-    Component(recordedEntity, "UsageRecordedLogEntity", "JPA Entity", "usage 로그 영속 모델")
-}
-
-Container_Ext(rabbit, "RabbitMQ", "Message Broker")
-ContainerDb_Ext(usageDb, "PostgreSQL (usage_db)", "RDB")
-
-Rel(rabbit, eventListener, "usage.recorded 전달", "AMQP")
-Rel(eventListener, recordedService, "onMessage(json)", "Internal call")
-Rel(recordedService, recordedRepo, "existsByEventId/save", "JPA")
-Rel(recordedRepo, recordedEntity, "ORM 매핑", "JPA")
-Rel(recordedRepo, usageDb, "INSERT/SELECT", "SQL")
-```
-
-## C3 - Component Diagram (API Gateway Service)
-
-```mermaid
-C4Component
-title C3: API Gateway Components (As-Is)
-
-Container_Boundary(gatewayBoundary, "API Gateway Service (Spring Cloud Gateway)") {
-    Component(securityConfig, "SecurityConfiguration", "Spring Security", "리소스 서버/JWT 보안 설정")
-    Component(jwtDecoderConfig, "JwtDecoderConfiguration", "Config", "JWT secret 기반 디코더 구성")
-    Component(trustFilter, "ProxyTrustHeadersGatewayFilter", "GlobalFilter", "X-User-Id/X-Gateway-Auth 헤더 부착")
-    Component(routeConfig, "Gateway Routes (application.yml)", "SCG Route", "/api/v1/ai/** -> proxy rewrite")
-}
-
-Container_Ext(client, "Developer/User", "HTTP client")
-Container_Ext(proxy, "Proxy Service", "Spring WebFlux")
-
-Rel(client, securityConfig, "Bearer JWT 요청", "HTTPS")
-Rel(securityConfig, jwtDecoderConfig, "JWT 검증 위임", "Internal")
-Rel(securityConfig, trustFilter, "인증 컨텍스트 전달", "Reactive security context")
-Rel(trustFilter, routeConfig, "헤더 보강 후 라우팅", "Gateway chain")
-Rel(routeConfig, proxy, "RewritePath + forward", "HTTP")
+  GW -->|forward AI path| PX
+  PX -->|publish usage.recorded| RABBIT["RabbitMQ"]
+  RABBIT -->|deliver usage.recorded| US
 ```
 
 ## C4 - Code Diagram (Proxy Relay Core)
@@ -164,85 +139,80 @@ Rel(routeConfig, proxy, "RewritePath + forward", "HTTP")
 classDiagram
 direction LR
 
+class ProxyController {
+  +Mono~ResponseEntity~ proxy(ServerWebExchange)
+}
+
 class ProxyRelayService {
-  +Mono~ResponseEntity~ relay(ServerWebExchange exchange)
-  -Mono~ResponseEntity~ forward(...)
-  -Mono~ResponseEntity~ mapResponse(...)
+  +Mono~ResponseEntity~ relay(ServerWebExchange)
   -Mono~Void~ publishUsage(...)
 }
 
 class ProviderRegistry {
-  -Map~AiProvider, ProviderHandler~ handlers
-  +ProviderHandler get(AiProvider provider)
+  +ProviderHandler get(AiProvider)
 }
 
 class ProviderHandler {
   <<interface>>
   +AiProvider provider()
-  +String baseUrl()
   +URI buildUpstreamUri(...)
-  +void applyUpstreamAuth(HttpHeaders headers, String apiKey)
-  +TokenUsage parseUsageFromResponseJson(String body)
-  +TokenUsage parseUsageFromSse(String sseBody)
+  +void applyUpstreamAuth(...)
+  +TokenUsage parseUsageFromResponseJson(...)
 }
 
 class ApiKeyClient {
-  +Mono~String~ resolveApiKey(String userId, AiProvider provider)
-  -String loadKeyBlocking(String cacheKey)
+  +Mono~String~ resolveApiKey(String, AiProvider)
 }
 
 class UserContextResolver {
-  +Mono~UserContext~ fromExchange(ServerWebExchange exchange)
+  +Mono~UserContext~ fromExchange(ServerWebExchange)
 }
 
 class UsageEventPublisher {
-  +Mono~Void~ publish(UsageRecordedEvent event)
+  +Mono~Void~ publish(UsageRecordedEvent)
 }
 
 class UsageRecordedEvent
 class TokenUsage
 class AiProvider
 
-ProxyRelayService --> ProviderRegistry : selects handler
-ProxyRelayService --> ApiKeyClient : resolves API key
-ProxyRelayService --> UserContextResolver : resolves tenant/user context
-ProxyRelayService --> ProviderHandler : forwards/parses usage
-ProxyRelayService --> UsageEventPublisher : publishes usage event
-UsageEventPublisher --> UsageRecordedEvent : serializes
-UsageRecordedEvent --> TokenUsage : contains
-ProviderHandler --> AiProvider : per-provider strategy
+ProxyController --> ProxyRelayService : relay()
+ProxyRelayService --> ProviderRegistry : select handler
+ProxyRelayService --> ProviderHandler : provider-specific behavior
+ProxyRelayService --> ApiKeyClient : resolve key
+ProxyRelayService --> UserContextResolver : resolve user/org/team
+ProxyRelayService --> UsageEventPublisher : publish usage event
+UsageEventPublisher --> UsageRecordedEvent : serialize payload
+UsageRecordedEvent --> TokenUsage : includes token stats
+ProviderHandler --> AiProvider : strategy by provider
 ```
 
-## C4 - Code Diagram (Usage Event Persist Flow)
+## C4 - Code Diagram (Usage Persistence Core)
 
 ```mermaid
 classDiagram
 direction LR
 
 class UsageRecordedEventListener {
-  +void onMessage(String json)
+  +void onMessage(String)
 }
 
 class UsageRecordedService {
-  +void persist(UsageRecordedEvent event)
-  -UsageRecordedLogEntity map(UsageRecordedEvent event)
+  +void persist(UsageRecordedEvent)
 }
 
 class UsageRecordedLogRepository {
   <<interface>>
-  +boolean existsByEventId(String eventId)
-  +UsageRecordedLogEntity save(UsageRecordedLogEntity entity)
+  +boolean existsByEventId(String)
+  +UsageRecordedLogEntity save(UsageRecordedLogEntity)
 }
 
 class UsageRecordedLogEntity
 class UsageRecordedEvent
-class TokenUsage
 
-UsageRecordedEventListener --> UsageRecordedEvent : deserialize(ObjectMapper)
-UsageRecordedEventListener --> UsageRecordedService : persist(event)
-UsageRecordedService --> UsageRecordedLogRepository : existsByEventId/save
-UsageRecordedService --> UsageRecordedLogEntity : map(event)
-UsageRecordedEvent --> TokenUsage : contains usage fields
+UsageRecordedEventListener --> UsageRecordedService : deserialize + persist
+UsageRecordedService --> UsageRecordedLogRepository : existsByEventId / save
+UsageRecordedService --> UsageRecordedLogEntity : map domain -> entity
 ```
 
 ## C4 - Code Diagram (Gateway Trust Header Flow)
@@ -255,29 +225,85 @@ class ProxyTrustHeadersGatewayFilter {
   +Mono~Void~ filter(ServerWebExchange, GatewayFilterChain)
   -Mono~Void~ forwardWithJwt(...)
   -Mono~Void~ forwardDevHeaders(...)
-  -void attachGatewayAuth(...)
 }
 
-class GatewayProperties {
-  +boolean isDevMode()
-  +String getSharedSecret()
-}
-
+class SecurityConfiguration
+class JwtDecoderConfiguration
+class GatewayProperties
 class JwtAuthenticationToken
-class ReactiveSecurityContextHolder
 class GatewayFilterChain
 
-ReactiveSecurityContextHolder --> ProxyTrustHeadersGatewayFilter : supplies Authentication
-ProxyTrustHeadersGatewayFilter --> JwtAuthenticationToken : reads sub/org_id/team_id
-ProxyTrustHeadersGatewayFilter --> GatewayProperties : reads dev-mode/shared-secret
-ProxyTrustHeadersGatewayFilter --> GatewayFilterChain : forwards mutated request
+SecurityConfiguration --> JwtDecoderConfiguration : jwt decoder
+SecurityConfiguration --> ProxyTrustHeadersGatewayFilter : security chain
+ProxyTrustHeadersGatewayFilter --> JwtAuthenticationToken : read sub/org_id/team_id
+ProxyTrustHeadersGatewayFilter --> GatewayProperties : devMode/sharedSecret
+ProxyTrustHeadersGatewayFilter --> GatewayFilterChain : mutate headers + forward
+```
+
+## C4 - Code Diagram (Identity Auth Core)
+
+```mermaid
+classDiagram
+direction LR
+
+class AuthController {
+  +ApiResponse~SignupResponse~ signup(SignupRequest)
+  +ApiResponse~LoginResponse~ login(LoginRequest)
+}
+
+class UserService {
+  +SignupResponse signup(SignupRequest)
+  +LoginResponse login(LoginRequest)
+}
+
+class UserRepository {
+  <<interface>>
+  +Optional~User~ findByEmail(String)
+  +boolean existsByEmail(String)
+  +User save(User)
+}
+
+class RoleRepository {
+  <<interface>>
+  +Optional~Role~ findByName(RoleName)
+}
+
+class JwtTokenProvider {
+  +String createAccessToken(Long, String)
+  +Authentication getAuthentication(String)
+  +boolean validateToken(String)
+}
+
+class JwtAuthenticationFilter {
+  +void doFilterInternal(HttpServletRequest, HttpServletResponse, FilterChain)
+}
+
+class SecurityConfig
+class PasswordEncoder
+class User
+class Role
+
+AuthController --> UserService : signup/login delegated
+UserService --> UserRepository : user lookup/save
+UserService --> RoleRepository : default role resolve
+UserService --> PasswordEncoder : password hash/verify
+UserService --> JwtTokenProvider : issue access token
+SecurityConfig --> JwtAuthenticationFilter : register filter chain
+JwtAuthenticationFilter --> JwtTokenProvider : parse/validate token
+UserRepository --> User : persistence
+RoleRepository --> Role : persistence
 ```
 
 ## 참고 코드/문서
 
-- `services/api-gateway-service`
-- `services/proxy-service`
-- `services/identity-service`
-- `services/usage-service`
-- `docker-compose.yml`
-- `docs/contracts/gateway-proxy.md`
+- `services/api-gateway-service/src/main/resources/application.yml`
+- `services/api-gateway-service/src/main/java/com/eevee/apigateway/filter/ProxyTrustHeadersGatewayFilter.java`
+- `services/proxy-service/src/main/java/com/eevee/proxyservice/web/ProxyController.java`
+- `services/proxy-service/src/main/java/com/eevee/proxyservice/relay/ProxyRelayService.java`
+- `services/proxy-service/src/main/java/com/eevee/proxyservice/mq/UsageEventPublisher.java`
+- `services/usage-service/src/main/java/com/eevee/usageservice/consumer/UsageRecordedEventListener.java`
+- `services/usage-service/src/main/java/com/eevee/usageservice/service/UsageRecordedService.java`
+- `services/identity-service/src/main/java/com/zerobugfreinds/identity_service/controller/AuthController.java`
+- `services/identity-service/src/main/java/com/zerobugfreinds/identity_service/service/UserService.java`
+- `services/identity-service/src/main/java/com/zerobugfreinds/identity_service/security/JwtTokenProvider.java`
+- `services/identity-service/src/main/java/com/zerobugfreinds/identity_service/security/JwtAuthenticationFilter.java`
