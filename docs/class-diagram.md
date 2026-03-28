@@ -45,7 +45,8 @@ class ProxyProperties
 class ProxyTrustHeadersGatewayFilter
 class GlobalFilter
 class Ordered
-class ApiGatewaySecurityConfiguration
+class SecurityConfiguration
+class JwtDecoderConfiguration
 class GatewayProperties
 class ReactiveJwtDecoder
 
@@ -55,6 +56,11 @@ class UsageRecordedLogRepository
 class UsageRecordedLogEntity
 class UsageRabbitConfiguration
 class UsageRabbitProperties
+class UsageGatewayAuthFilter
+class UsageHttpController
+class UsageGatewayProperties
+class UsageJacksonConfiguration
+class ObjectMapper
 
 class UsageRecordedEvent
 class TokenUsage
@@ -113,9 +119,15 @@ UsageEventPublisher ..> UsageRecordedEvent
 ProxyTrustHeadersGatewayFilter --|> GlobalFilter
 ProxyTrustHeadersGatewayFilter --|> Ordered
 ProxyTrustHeadersGatewayFilter --> GatewayProperties
-ApiGatewaySecurityConfiguration --> GatewayProperties
-ApiGatewaySecurityConfiguration ..> ReactiveJwtDecoder
+SecurityConfiguration --> GatewayProperties
+SecurityConfiguration ..> ReactiveJwtDecoder
+JwtDecoderConfiguration --> GatewayProperties
+JwtDecoderConfiguration ..> ReactiveJwtDecoder
 
+UsageGatewayAuthFilter --|> OncePerRequestFilter
+UsageGatewayAuthFilter --> UsageGatewayProperties
+UsageJacksonConfiguration ..> ObjectMapper
+UsageRecordedEventListener --> ObjectMapper
 UsageRecordedEventListener --> UsageRecordedService
 UsageRecordedEventListener ..> UsageRecordedEvent
 UsageRecordedService --> UsageRecordedLogRepository
@@ -231,15 +243,18 @@ direction TB
 class ProxyTrustHeadersGatewayFilter
 class GlobalFilter
 class Ordered
-class ApiGatewaySecurityConfiguration
+class SecurityConfiguration
+class JwtDecoderConfiguration
 class GatewayProperties
 class ReactiveJwtDecoder
 
 ProxyTrustHeadersGatewayFilter --|> GlobalFilter
 ProxyTrustHeadersGatewayFilter --|> Ordered
 ProxyTrustHeadersGatewayFilter --> GatewayProperties
-ApiGatewaySecurityConfiguration --> GatewayProperties
-ApiGatewaySecurityConfiguration ..> ReactiveJwtDecoder
+SecurityConfiguration --> GatewayProperties
+SecurityConfiguration ..> ReactiveJwtDecoder
+JwtDecoderConfiguration --> GatewayProperties
+JwtDecoderConfiguration ..> ReactiveJwtDecoder
 ```
 
 ## 5) Usage Service Sub Diagram
@@ -248,6 +263,12 @@ ApiGatewaySecurityConfiguration ..> ReactiveJwtDecoder
 classDiagram
 direction TB
 
+class UsageHttpController
+class UsageGatewayAuthFilter
+class OncePerRequestFilter
+class UsageGatewayProperties
+class UsageJacksonConfiguration
+class ObjectMapper
 class UsageRecordedEventListener
 class UsageRecordedService
 class UsageRecordedLogRepository
@@ -259,6 +280,10 @@ class UsageRecordedEvent
 class TokenUsage
 class AiProvider
 
+UsageGatewayAuthFilter --|> OncePerRequestFilter
+UsageGatewayAuthFilter --> UsageGatewayProperties
+UsageJacksonConfiguration ..> ObjectMapper
+UsageRecordedEventListener --> ObjectMapper
 UsageRecordedEventListener --> UsageRecordedService
 UsageRecordedEventListener ..> UsageRecordedEvent
 UsageRecordedService --> UsageRecordedLogRepository
