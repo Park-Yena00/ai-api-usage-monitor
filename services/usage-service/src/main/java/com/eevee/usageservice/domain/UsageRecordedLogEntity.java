@@ -101,4 +101,8 @@ public class UsageRecordedLogEntity {
     public UUID getEventId() {
         return eventId;
     }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
 }

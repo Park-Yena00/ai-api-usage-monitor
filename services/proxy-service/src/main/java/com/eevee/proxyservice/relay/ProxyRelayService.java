@@ -1,6 +1,5 @@
 package com.eevee.proxyservice.relay;
 
-import com.eevee.proxyservice.config.ProxyProperties;
 import com.eevee.proxyservice.key.ApiKeyClient;
 import com.eevee.proxyservice.mq.UsageEventPublisher;
 import com.eevee.proxyservice.provider.ProviderHandler;

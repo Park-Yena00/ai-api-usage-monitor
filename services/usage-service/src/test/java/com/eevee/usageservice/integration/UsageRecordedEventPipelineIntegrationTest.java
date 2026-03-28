@@ -35,9 +35,11 @@ import static org.awaitility.Awaitility.await;
 @Testcontainers
 class UsageRecordedEventPipelineIntegrationTest {
 
+    @SuppressWarnings("resource") // closed by Testcontainers JUnit extension
     @Container
     static RabbitMQContainer rabbit = new RabbitMQContainer("rabbitmq:3.13-alpine");
 
+    @SuppressWarnings("resource") // closed by Testcontainers JUnit extension
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("app")
