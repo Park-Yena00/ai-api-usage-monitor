@@ -17,6 +17,12 @@ spring:
               filters:
                 - RemoveRequestHeader=Authorization
                 - RewritePath=/api/v1/ai/(?<segment>.*), /proxy/${segment}
+            - id: usage-http
+              uri: ${GATEWAY_USAGE_URI:http://localhost:8092}
+              predicates:
+                - Path=/api/v1/usage/**
+              filters:
+                - RemoveRequestHeader=Authorization
 
 management:
   endpoints:

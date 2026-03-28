@@ -17,7 +17,8 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * After security, attaches trust headers for Proxy (user subject, platform id, role, org/team, correlation, gateway auth).
+ * After security, attaches the same trust headers for downstream services that consume Gateway JWT
+ * ({@code /api/v1/ai/**} → Proxy, {@code /api/v1/usage/**} → Usage HTTP).
  * See {@code docs/contracts/gateway-proxy.md}.
  */
 @Component
@@ -40,7 +41,7 @@ public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
-        if (!path.startsWith("/api/v1/ai/")) {
+        if (!requiresTrustHeaders(path)) {
             return chain.filter(exchange);
         }
         return ReactiveSecurityContextHolder.getContext()
@@ -140,6 +141,10 @@ public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
         if (secret != null && !secret.isBlank()) {
             req.header(HDR_GATEWAY_AUTH, secret);
         }
+    }
+
+    private static boolean requiresTrustHeaders(String path) {
+        return path.startsWith("/api/v1/ai/") || path.startsWith("/api/v1/usage/");
     }
 
     @Override

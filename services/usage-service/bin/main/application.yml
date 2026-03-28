@@ -39,3 +39,7 @@ usage:
     exchange: usage.events
     routing-key: usage.recorded
     queue: usage-service.queue
+  gateway:
+    # When true, require header X-Gateway-Auth (see docs/contracts/gateway-proxy.md). Same value as Proxy / Gateway.
+    require-auth: ${USAGE_GATEWAY_REQUIRE_AUTH:false}
+    shared-secret: ${PROXY_GATEWAY_SHARED_SECRET:}
