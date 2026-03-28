@@ -1,7 +1,7 @@
 # Web(Next.js) ↔ Identity 인증 BFF 계약
 
-버전: 1.0  
-관련: [docs/architecture.md](../architecture.md) §1.3, §3.3
+버전: 1.4  
+관련: [docs/architecture.md](../architecture.md) §1.3, §3.3, [Identity 인증 API 계약](../identity-auth-api-contract.md), [저장소 구조](../repository-structure.md) §6
 
 ---
 
@@ -18,14 +18,30 @@
 |------|-----------------------|-------------------|
 | 회원가입 | `POST /api/auth/signup` | `POST /api/auth/signup` |
 | 로그인 | `POST /api/auth/login` | `POST /api/auth/login` |
-| 세션(로그인 여부 단일 기준) | `GET /api/auth/session` | (BFF가 쿠키·토큰 검증으로 판단; 필요 시 Identity 보호 API 호출) |
+| 세션(로그인 여부 단일 기준) | `GET /api/auth/session` | `GET /api/auth/session` (BFF가 쿠키 JWT를 Bearer로 전달해 프록시) |
+| 로그아웃 | `POST /api/auth/logout` | `POST /api/auth/logout` (선택 프록시; stateless이며 실질 로그아웃은 BFF의 쿠키 삭제) |
 
 - Web BFF는 `IDENTITY_SERVICE_URL` 환경 변수를 사용해 Identity로 프록시한다.
-- BFF 입력 검증은 Zod 스키마로 수행한다.
-- **`GET /api/auth/session`** 은 프론트가 “로그인됨/만료”를 판단할 때 사용하는 **단일 기준 엔드포인트**로 둔다. 응답에도 `Cache-Control: no-store`를 적용한다(§8).
-- `GET /api/auth/session` 응답 형식:
-  - 로그인 상태: `200` + `ApiResponse<{ authenticated: true }>`
-  - 비로그인/만료: `401` + `ApiResponse<null>` (`success=false`, `message`, `data=null`)
+- 요청 **본문**이 있는 경로(회원가입·로그인 등)의 입력 검증은 Zod 스키마로 수행한다. `GET /api/auth/session`·`POST /api/auth/logout` 은 본문이 없으며, 로그아웃은 쿠키 삭제가 핵심이다.
+- **`GET /api/auth/session`** 은 프론트가 “로그인됨/만료”를 판단할 때 사용하는 **단일 기준 엔드포인트**로 둔다. BFF 응답에도 `Cache-Control: no-store`를 적용한다(§8).
+
+### 2.1 `GET /api/auth/session` 동작
+
+1. 브라우저 → BFF: `Cookie`에 `access_token`(httpOnly, 로그인 시 설정)이 포함되면 자동 전송된다.
+2. BFF → Identity: `GET {IDENTITY_SERVICE_URL}/api/auth/session`, 헤더 `Authorization: Bearer {access_token}`, `Accept: application/json`.
+3. **`access_token` 쿠키가 없거나 값이 비어 있으면** BFF는 Identity를 호출하지 않고 `401` + `ApiResponse<null>` (`success=false`, `data=null`)로 응답한다. 메시지는 BFF에서 고정할 수 있다(예: 로그인 필요 안내).
+4. **성공 시**(`Identity`가 `200` + `success=true`) BFF가 프론트에 돌려주는 `data` 필드는 업스트림과 **동일한 형태**이어야 한다. 필드 정의의 정본은 [Identity 인증 API 계약 §5](../identity-auth-api-contract.md)를 따른다.
+
+```json
+{
+  "email": "user@example.com",
+  "role": "USER",
+  "authenticated": true
+}
+```
+
+5. **Identity가 `401` 등으로 거절**하면 상태 코드와 JSON 본문을 **그대로** 프론트에 전달한다(§6).
+6. `IDENTITY_SERVICE_URL` 미설정 등 BFF 설정 오류·업스트림 연결 실패·업스트림 성공 응답이 계약과 맞지 않는 경우 등은 BFF가 `500`/`502` 등으로 처리할 수 있다. 프론트는 `success=false`와 `message`로 사용자 메시지를 구성한다.
 
 ---
 
@@ -86,13 +102,27 @@
 
 위 범위는 초기 논의에서 “401 시 항상 로그인 페이지”로 읽힐 수 있는 문구와 구분되므로, **정본은 본 절(6.1)을 따른다.**
 
+### 6.2 보호 페이지(App Router) 및 미들웨어 (`apps/web`)
+
+브라우저가 직접 보는 **페이지 라우트** 중 로그인이 필요한 영역은 Next.js **`middleware.ts`** 로 1차 게이트한다. 구현 위치: `apps/web/middleware.ts`.
+
+| 항목 | 내용 |
+|------|------|
+| **matcher (정본)** | `/dashboard/:path*`, `/settings/:path*`, `/organizations/:path*`, `/teams/:path*` |
+| **판단 기준** | 요청에 **`access_token` httpOnly 쿠키**가 있고 값이 비어 있지 않으면 통과. **JWT 서명·만료 검증은 여기서 하지 않는다** (쿠키만 없으면 로그인 유도). 토큰 유효성은 `GET /api/auth/session`(§2.1) 등 BFF·업스트림에서 판단한다. |
+| **미통과 시** | `307` 리다이렉트 → `/login?next=<원래 pathname>` (`next`는 로그인 후 되돌아갈 경로; 소비 시 오픈 리다이렉트 방지를 위해 `apps/web/src/lib/auth/safe-next-path.ts`의 `getSafeNextPath` 등으로 검증한다). |
+| **대응 라우트** | 위 접두사마다 App Router **`[[...path]]` optional catch-all** 페이지를 둔다. 예: `apps/web/src/app/dashboard/[[...path]]/page.tsx`. 하위 경로(예: `/dashboard/reports`)도 동일 세그먼트에서 처리해 matcher와 **404 불일치**를 피한다. |
+| **현재 UI 성격** | 대시보드·설정·조직·팀 경로는 **플레이스홀더**일 수 있다. 기능 구현 시에도 서버 측 권한·테넌트 검증은 반드시 유지한다(프론트 규칙: `.cursor/rules/project-common-nextjs.mdc`). |
+
+**유지보수:** matcher에 경로를 추가·변경하면 (1) 동일 접두사의 `app/<segment>/[[...path]]/page.tsx`(또는 합의된 라우트)를 추가하거나, (2) 의도적으로 페이지가 없다면 matcher에서 해당 패턴을 제거한다. 회귀 방지용 테스트: `apps/web/middleware.test.ts`, `apps/web/src/app/protected-routes.test.ts`.
+
 ---
 
 ## 7. 로그아웃 쿠키 삭제 규칙
 
-- BFF 로그아웃 API에서 `access_token` 쿠키를 만료 처리한다.
+- BFF `POST /api/auth/logout`에서 `access_token` 쿠키를 만료 처리한다.
 - 저장 시와 동일한 옵션(`path`, `sameSite`, `secure`, `httpOnly`)을 사용한다.
-- `maxAge: 0` + 과거 `expires`를 함께 명시해 삭제를 보장한다.
+- `maxAge: 0`과 함께 **`Expires`를 과거 시각**(예: `Thu, 01 Jan 1970 00:00:00 GMT`, 구현에서는 `expires: new Date(0)`)으로 명시해 브라우저 간 삭제를 보장한다.
 
 ---
 
@@ -110,3 +140,20 @@
   예: `IDENTITY_SERVICE_URL=http://localhost:8080`
 - 로컬 기본 실행 순서: Postgres → Identity → Web
 - 포트 충돌 주의: Gateway와 Identity가 동시에 `8080`을 사용하지 않도록 환경별 포트를 조정한다.
+
+---
+
+## 10. 랜딩(공개 홈) · BFF 회귀 테스트
+
+### 10.1 랜딩
+
+- 앱 루트 **`/`** (`apps/web/src/app/page.tsx`)는 제품 소개용 **최소 내비게이션**을 둔다. **로그인**·**회원가입**은 각각 **`/login`**, **`/signup`** 으로 연결한다(계약 변경 없음, 진입점 안내용).
+
+### 10.2 Vitest(라우트 핸들러·미들웨어)
+
+- BFF 인증 라우트는 구현 파일 옆에 **Vitest** 스펙을 둔다. 예:
+  - `apps/web/src/app/api/auth/session/route.test.ts` — 쿠키 없음·`IDENTITY_SERVICE_URL` 미설정·업스트림 프록시·401·형식 오류·연결 실패 등
+  - `apps/web/src/app/api/auth/logout/route.test.ts` — 쿠키 삭제·선택적 업스트림 `POST /api/auth/logout`·업스트림 실패 시에도 쿠키 삭제
+  - `login`·`signup` Route Handler도 동일 패턴의 `route.test.ts`로 회귀 검증
+- 미들웨어·보호 경로 정합성은 **`apps/web/middleware.test.ts`**, **`apps/web/src/app/protected-routes.test.ts`** (§6.2 유지보수 문구와 동일).
+- 실행: 저장소 루트에서 `cd apps/web` 후 **`npx vitest run`** (또는 CI에서 동일). **E2E(실제 Identity 기동)** 는 §9 환경으로 별도 확인한다.
