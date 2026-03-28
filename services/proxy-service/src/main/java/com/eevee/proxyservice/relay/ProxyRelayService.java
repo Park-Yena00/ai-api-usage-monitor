@@ -78,7 +78,7 @@ public class ProxyRelayService {
         ProviderHandler handler = providerRegistry.get(provider);
 
         return userContextResolver.fromExchange(exchange)
-                .flatMap(ctx -> apiKeyClient.resolveApiKey(ctx.userId(), provider)
+                .flatMap(ctx -> apiKeyClient.resolveApiKey(ctx.userKey(), provider)
                         .flatMap(apiKey -> forward(exchange, ctx, handler, provider, remainder, apiKey)));
     }
 
@@ -186,7 +186,7 @@ public class ProxyRelayService {
                 null,
                 null,
                 ctx.correlationId(),
-                ctx.userId(),
+                ctx.userKey(),
                 ctx.organizationId(),
                 ctx.teamId(),
                 provider,

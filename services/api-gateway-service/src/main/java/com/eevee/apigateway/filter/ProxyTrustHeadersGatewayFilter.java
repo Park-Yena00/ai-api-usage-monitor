@@ -17,13 +17,15 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * After security, attaches {@code X-User-Id}, optional org/team, and {@code X-Gateway-Auth} for Proxy.
+ * After security, attaches trust headers for Proxy (user subject, platform id, role, org/team, correlation, gateway auth).
  * See {@code docs/contracts/gateway-proxy.md}.
  */
 @Component
 public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
 
     private static final String HDR_USER = "X-User-Id";
+    private static final String HDR_PLATFORM_USER = "X-Platform-User-Id";
+    private static final String HDR_USER_ROLE = "X-User-Role";
     private static final String HDR_ORG = "X-Org-Id";
     private static final String HDR_TEAM = "X-Team-Id";
     private static final String HDR_GATEWAY_AUTH = "X-Gateway-Auth";
@@ -67,6 +69,11 @@ public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
         Jwt jwt = jwtAuth.getToken();
         ServerHttpRequest.Builder req = exchange.getRequest().mutate();
         req.header(HDR_USER, jwt.getSubject());
+        putClaimAsHeader(req, HDR_PLATFORM_USER, jwt, "userId");
+        String role = jwt.getClaimAsString("role");
+        if (role != null && !role.isBlank()) {
+            req.header(HDR_USER_ROLE, role);
+        }
         copyCorrelation(exchange, req);
         String org = jwt.getClaimAsString("org_id");
         if (org != null && !org.isBlank()) {
@@ -80,6 +87,20 @@ public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange.mutate().request(req.build()).build());
     }
 
+    /**
+     * Copies JWT claim (numeric or string) to a single header value. Identity {@code userId} is typically a number claim.
+     */
+    private static void putClaimAsHeader(ServerHttpRequest.Builder req, String headerName, Jwt jwt, String claimName) {
+        Object v = jwt.getClaim(claimName);
+        if (v == null) {
+            return;
+        }
+        String s = String.valueOf(v).trim();
+        if (!s.isEmpty()) {
+            req.header(headerName, s);
+        }
+    }
+
     private Mono<Void> forwardDevHeaders(ServerWebExchange exchange, GatewayFilterChain chain) {
         String userId = exchange.getRequest().getHeaders().getFirst(HDR_USER);
         if (userId == null || userId.isBlank()) {
@@ -87,8 +108,24 @@ public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
         }
         ServerHttpRequest.Builder req = exchange.getRequest().mutate();
         copyCorrelation(exchange, req);
+        copyOptionalDevTrustHeaders(exchange, req);
         attachGatewayAuth(req);
         return chain.filter(exchange.mutate().request(req.build()).build());
+    }
+
+    /** Dev mode: passthrough optional headers so local clients can simulate Gateway JWT mapping. */
+    private static void copyOptionalDevTrustHeaders(ServerWebExchange exchange, ServerHttpRequest.Builder req) {
+        copyHeaderIfPresent(exchange, req, HDR_PLATFORM_USER);
+        copyHeaderIfPresent(exchange, req, HDR_USER_ROLE);
+        copyHeaderIfPresent(exchange, req, HDR_ORG);
+        copyHeaderIfPresent(exchange, req, HDR_TEAM);
+    }
+
+    private static void copyHeaderIfPresent(ServerWebExchange exchange, ServerHttpRequest.Builder req, String name) {
+        String v = exchange.getRequest().getHeaders().getFirst(name);
+        if (v != null && !v.isBlank()) {
+            req.header(name, v);
+        }
     }
 
     private void copyCorrelation(ServerWebExchange exchange, ServerHttpRequest.Builder req) {
