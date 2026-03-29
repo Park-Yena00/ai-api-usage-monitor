@@ -1,7 +1,7 @@
 # Gateway ↔ Proxy 서비스 간 계약
 
 버전: 1.2  
-관련: [docs/architecture.md](../architecture.md) §4.1, §4.2, [`apps/web/.env.example`](../../apps/web/.env.example) (`API_GATEWAY_URL`)
+관련: [docs/architecture.md](../architecture.md) §4.1, §4.2, [`apps/web/.env.example`](../../apps/web/.env.example) (`API_GATEWAY_URL`), [Web·Gateway Usage BFF](./web-gateway-bff.md)(브라우저 `/api/usage/**` 매핑)
 
 **v1.1:** `application.yml` 라우트·`RemoveRequestHeader=Authorization`·Bearer 검증·Web `API_GATEWAY_URL` 합의를 §1.1·§3·§9에 명시(팀 A·C 정합).  
 **v1.2:** §4.2 Identity JWT `sub`(이메일)·Usage 원장 `user_id`·BFF `GATEWAY_DEV_MODE` 세션 이메일 정합·게이트웨이 회귀 테스트 위치 명시.
