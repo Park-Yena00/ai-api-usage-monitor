@@ -1,6 +1,6 @@
 # Web(Next.js) ↔ Identity 인증 BFF 계약
 
-버전: 1.4  
+버전: 1.5  
 관련: [docs/architecture.md](../architecture.md) §1.3, §3.3, [Identity 인증 API 계약](../identity-auth-api-contract.md), [저장소 구조](../repository-structure.md) §6
 
 ---
@@ -86,6 +86,12 @@
 
 1. 브라우저 → BFF: 쿠키 자동 전송
 2. BFF → 백엔드 보호 API: `Authorization: Bearer {accessToken}` 헤더로 전달
+
+### 5.1 Usage 경로(`GET /api/usage/**`)와 `GATEWAY_DEV_MODE`
+
+- BFF는 `API_GATEWAY_URL`로 `/api/v1/usage/...` 를 프록시한다(`apps/web/src/app/api/usage/[[...path]]/route.ts`).
+- 게이트웨이 **개발 모드**(`GATEWAY_DEV_MODE=true`, `gateway.dev-mode=true`)에서는 Usage 라우트에 **`X-User-Id`가 필수**이므로, BFF가 Identity **`GET /api/auth/session` 응답의 `email`** 을 읽어 `X-User-Id` 헤더로 붙인다.
+- 그 **이메일**은 Identity JWT의 **`sub`** 와 동일하다([identity-auth-api-contract §4.3](../identity-auth-api-contract.md)). 운영에서 게이트웨이가 JWT만으로 `X-User-Id`를 세팅할 때와 **같은 문자열**이 Usage 원장·집계 키가 된다([gateway-proxy.md §4.2](./gateway-proxy.md)).
 
 ---
 
