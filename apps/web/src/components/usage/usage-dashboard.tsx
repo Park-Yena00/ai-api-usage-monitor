@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import * as React from "react"
 import {
   Bar,
@@ -18,7 +17,6 @@ import {
   YAxis,
 } from "recharts"
 
-import { LogoutButton } from "@/components/auth/logout-button"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -229,29 +227,29 @@ export function UsageDashboard() {
   const monthlyHasActivity = monthlyChart.some((r) => r.requestCount > 0 || r.cost > 0)
 
   return (
-    <div className="mx-auto min-h-full max-w-6xl px-4 py-8">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">사용량 대시보드</h1>
+    <div className="w-full min-h-full pb-8">
+      <header className="mb-8 flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">API 사용량</h1>
+            <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              개인
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground">
             집계 구간은 UTC 기준 YYYY-MM-DD입니다. (최근 {RANGE_DAYS}일 / 월별 최대 {MONTHLY_LOOKBACK_DAYS}일)
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={mainLoading}
-            onClick={() => setMainRefresh((n) => n + 1)}
-          >
-            새로고침
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/">홈</Link>
-          </Button>
-          <LogoutButton />
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          disabled={mainLoading}
+          onClick={() => setMainRefresh((n) => n + 1)}
+        >
+          새로고침
+        </Button>
       </header>
 
       {mainError ? (
