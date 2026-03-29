@@ -8,13 +8,11 @@ import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import reactor.test.StepVerifierOptions;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -54,12 +52,7 @@ class ProxyTrustHeadersGatewayFilterTest {
 
         ProxyTrustHeadersGatewayFilter filter = new ProxyTrustHeadersGatewayFilter(gatewayProperties);
 
-        // contextWrite만 쓰면 일부 환경에서 getContext()가 empty → 401. defer + StepVerifier 초기 Context로 정합.
-        StepVerifier.create(
-                        Mono.defer(() -> filter.filter(exchange, chain)),
-                        StepVerifierOptions.create()
-                                .withInitialContext(ReactiveSecurityContextHolder.withAuthentication(auth))
-                )
+        StepVerifier.create(filter.applyTrustHeaders(exchange, chain, auth))
                 .verifyComplete();
 
         assertThat(userIdSeen.get()).isEqualTo("user@example.com");
@@ -85,11 +78,7 @@ class ProxyTrustHeadersGatewayFilterTest {
 
         ProxyTrustHeadersGatewayFilter filter = new ProxyTrustHeadersGatewayFilter(gatewayProperties);
 
-        StepVerifier.create(
-                        Mono.defer(() -> filter.filter(exchange, chain)),
-                        StepVerifierOptions.create()
-                                .withInitialContext(ReactiveSecurityContextHolder.withAuthentication(anon))
-                )
+        StepVerifier.create(filter.applyTrustHeaders(exchange, chain, anon))
                 .verifyComplete();
 
         assertThat(userIdSeen.get()).isEqualTo("bff-session@local.dev");
@@ -107,13 +96,7 @@ class ProxyTrustHeadersGatewayFilterTest {
 
         ProxyTrustHeadersGatewayFilter filter = new ProxyTrustHeadersGatewayFilter(gatewayProperties);
 
-        StepVerifier.create(
-                        Mono.defer(() -> filter.filter(exchange, chain)),
-                        StepVerifierOptions.create()
-                                .withInitialContext(ReactiveSecurityContextHolder.withAuthentication(
-                                        new AnonymousAuthenticationToken(
-                                                "k", "a", AuthorityUtils.createAuthorityList("ROLE_ANONYMOUS"))))
-                )
+        StepVerifier.create(filter.filter(exchange, chain))
                 .verifyComplete();
 
         assertThat(chainRan.get()).isTrue();
