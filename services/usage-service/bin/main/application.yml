@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: usage-service
+  flyway:
+    enabled: true
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${USAGE_POSTGRES_DB:usage_db}
     username: ${USAGE_POSTGRES_USER:usage_app}
@@ -11,6 +13,8 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
+      # Flyway runs first; migrations repair legacy usage_recorded_log. New envs still rely on
+      # Hibernate to create tables when the table did not exist before Flyway (see V1 migration).
       ddl-auto: update
       naming:
         physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
@@ -39,3 +43,7 @@ usage:
     exchange: usage.events
     routing-key: usage.recorded
     queue: usage-service.queue
+  analytics:
+    max-range-days: ${USAGE_ANALYTICS_MAX_RANGE_DAYS:400}
+  gateway:
+    shared-secret: ${USAGE_GATEWAY_SHARED_SECRET:}

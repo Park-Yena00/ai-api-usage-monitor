@@ -17,6 +17,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -30,13 +31,17 @@ import static org.awaitility.Awaitility.await;
  * <p>
  * Docker가 필요하다. 로컬에서 Docker 없이 빌드할 때는 {@code ./gradlew test -x integration} 등으로
  * 제외하거나, 이 클래스만 비활성화할 수 있다.
+ * <p>
+ * 런타임에 {@code flyway-database-postgresql} 이 있으면 Flyway가 Testcontainers PostgreSQL 16에서도 동작한다.
+ * {@code @DynamicPropertySource} 로 컨테이너 JDBC·AMQP를 주입하고, {@code ddl-auto=create-drop} 으로 스키마를 맞춘다.
  */
 @SpringBootTest
 @Testcontainers
 class UsageRecordedEventPipelineIntegrationTest {
 
     @Container
-    static RabbitMQContainer rabbit = new RabbitMQContainer("rabbitmq:3.13-alpine");
+    static RabbitMQContainer rabbitMq = new RabbitMQContainer("rabbitmq:3.12-alpine")
+            .withStartupTimeout(Duration.ofSeconds(180));
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
@@ -46,8 +51,8 @@ class UsageRecordedEventPipelineIntegrationTest {
 
     @DynamicPropertySource
     static void registerProps(DynamicPropertyRegistry r) {
-        r.add("spring.rabbitmq.host", rabbit::getHost);
-        r.add("spring.rabbitmq.port", rabbit::getAmqpPort);
+        r.add("spring.rabbitmq.host", rabbitMq::getHost);
+        r.add("spring.rabbitmq.port", rabbitMq::getAmqpPort);
         r.add("spring.rabbitmq.username", () -> "guest");
         r.add("spring.rabbitmq.password", () -> "guest");
         r.add("spring.datasource.url", postgres::getJdbcUrl);
