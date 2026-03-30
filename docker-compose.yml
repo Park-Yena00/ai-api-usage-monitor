@@ -13,15 +13,27 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
       POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  postgres-usage:
+    image: postgres:16-alpine
+    environment:
+      # superuser credentials used by docker/postgres/init/02-create-usage-db.sh
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
       # usage-service only; init script 02-create-usage-db.sh (first boot / empty volume only)
       USAGE_POSTGRES_DB: ${USAGE_POSTGRES_DB:-usage_db}
       USAGE_POSTGRES_USER: ${USAGE_POSTGRES_USER:-usage_app}
       USAGE_POSTGRES_PASSWORD: ${USAGE_POSTGRES_PASSWORD:-usage_app}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres_usage_data:/var/lib/postgresql/data
+      - ./docker/postgres/init/02-create-usage-db.sh:/docker-entrypoint-initdb.d/02-create-usage-db.sh:ro
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -60,6 +72,7 @@ services:
       - proxy-service
     environment:
       GATEWAY_PROXY_URI: http://proxy-service:8081
+      GATEWAY_USAGE_URI: ${GATEWAY_USAGE_URI:-http://host.docker.internal:8092}
       PROXY_GATEWAY_SHARED_SECRET: ${PROXY_GATEWAY_SHARED_SECRET:-}
       GATEWAY_JWT_SECRET: ${GATEWAY_JWT_SECRET:-}
       GATEWAY_DEV_MODE: ${GATEWAY_DEV_MODE:-true}
@@ -68,3 +81,4 @@ services:
 
 volumes:
   postgres_data:
+  postgres_usage_data:

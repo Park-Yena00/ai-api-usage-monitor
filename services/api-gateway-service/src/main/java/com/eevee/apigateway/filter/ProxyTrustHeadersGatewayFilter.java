@@ -17,7 +17,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * After security, attaches {@code X-User-Id}, optional org/team, and {@code X-Gateway-Auth} for Proxy.
+ * After security, attaches {@code X-User-Id}, optional org/team, and {@code X-Gateway-Auth} for Proxy and Usage HTTP.
  * See {@code docs/contracts/gateway-proxy.md}.
  */
 @Component
@@ -38,29 +38,33 @@ public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
-        if (!path.startsWith("/api/v1/ai/")) {
+        if (!requiresGatewayTrustHeaders(path)) {
             return chain.filter(exchange);
         }
         return ReactiveSecurityContextHolder.getContext()
-                .flatMap(ctx -> {
-                    Authentication auth = ctx.getAuthentication();
-                    if (auth instanceof JwtAuthenticationToken jwtAuth) {
-                        return forwardWithJwt(exchange, chain, jwtAuth);
-                    }
-                    if (gatewayProperties.isDevMode()
-                            && (auth == null
-                            || !auth.isAuthenticated()
-                            || auth instanceof AnonymousAuthenticationToken)) {
-                        return forwardDevHeaders(exchange, chain);
-                    }
-                    return Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthenticated"));
-                })
+                .flatMap(ctx -> applyTrustHeaders(exchange, chain, ctx.getAuthentication()))
                 .switchIfEmpty(Mono.defer(() -> {
                     if (gatewayProperties.isDevMode()) {
                         return forwardDevHeaders(exchange, chain);
                     }
                     return Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthenticated"));
                 }));
+    }
+
+    /**
+     * 동일 패키지 단위 테스트용. 런타임은 {@link #filter} → SecurityContext 경로만 사용한다.
+     */
+    Mono<Void> applyTrustHeaders(ServerWebExchange exchange, GatewayFilterChain chain, Authentication auth) {
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            return forwardWithJwt(exchange, chain, jwtAuth);
+        }
+        if (gatewayProperties.isDevMode()
+                && (auth == null
+                || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken)) {
+            return forwardDevHeaders(exchange, chain);
+        }
+        return Mono.error(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthenticated"));
     }
 
     private Mono<Void> forwardWithJwt(ServerWebExchange exchange, GatewayFilterChain chain, JwtAuthenticationToken jwtAuth) {
@@ -108,5 +112,9 @@ public class ProxyTrustHeadersGatewayFilter implements GlobalFilter, Ordered {
     @Override
     public int getOrder() {
         return Ordered.HIGHEST_PRECEDENCE + 1000;
+    }
+
+    static boolean requiresGatewayTrustHeaders(String path) {
+        return path.startsWith("/api/v1/ai/") || path.startsWith("/api/v1/usage/");
     }
 }
